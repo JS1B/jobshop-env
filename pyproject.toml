@@ -1,0 +1,12 @@
+[project]
+name = "jobshop-env"
+version = "0.1.0"
+description = "Small job-shop scheduling environment with a separate final-state verifier."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
