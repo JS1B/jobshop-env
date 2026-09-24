@@ -13,6 +13,16 @@ pip install -e ".[dev]"
 make test
 ```
 
-`make test` collects four verifier tests. They are skipped until the verifier is implemented.
+`make test` runs the verifier, the environment, the generators, and the exploit test.
 
-`make demo` will print the greedy baseline's success rate on three seeded variants. It is not implemented yet.
+`make demo` prints the greedy baseline's success rate on three seeded variants, ten episodes each. It also writes `out/greedy-uniform.svg` and `out/double-booked.svg`. Open either file in a browser. The second chart stacks two jobs on machine 0 at the same time.
+
+One episode:
+
+```bash
+python -m jobshop.demo --variant uniform --seed 0
+```
+
+That prints the verifier score, 0 or 1, and writes `out/uniform-seed0.svg`. `--variant` is `uniform`, `bottleneck`, or `tight`.
+
+Decisions, results, limits, and the next step are in `NOTE.md`.

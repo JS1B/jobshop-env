@@ -7,3 +7,6 @@ dist/
 
 # Local working notes. Not part of the submission.
 HANDOFF.md
+
+# Charts written by `make demo`.
+out/
