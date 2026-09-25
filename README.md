@@ -2,48 +2,48 @@
 
 A small job-shop scheduling environment with a separate verifier that scores only the final state.
 
-The policy under test (a rule, a search, or a model) schedules one operation at a time by choosing a job and a start time. The environment keeps each job in order and rejects a start in the past. It does not keep machines from being double-booked. The terminal reward is the verifier score, 0 or 1. The observation does not include a target schedule or the target finish time.
+A policy (rule, search, or model) schedules one operation at a time by picking a job and a start time. The environment enforces job order and rejects starts in the past, but does **not** prevent double-booked machines. The terminal reward is the verifier score (0 or 1). Observations exclude the target schedule and target finish time.
 
-## Run
+## Quick start
 
-From this directory, with Python 3.11+:
+Requires Python 3.11+.
 
 ```bash
-make test
+make test       # verifier, environment, generator, scenario, and exploit tests
+make demo       # greedy baseline on three seeded variants, 10 episodes each
+make scenario   # three planners on the Hartwig week
 ```
 
-The first run creates `.venv/` and installs the package with pytest. `make test` runs the verifier, environment, generator, scenario, and exploit tests.
+The first run creates `.venv/` and installs the package with pytest. Charts are written to `out/` as SVG; open them in a browser. `out/double-booked.svg` shows two jobs stacked on machine 0 at the same time.
 
-`make demo` prints the greedy baseline's success rate on three seeded variants, ten episodes each. It also writes `out/greedy-uniform.svg` and `out/double-booked.svg`. Open either file in a browser. The second chart stacks two jobs on machine 0 at the same time.
-
-`make scenario` runs three planners on one fictional shop week and writes a chart for each under `out/`.
-
-One episode:
+Single episode (`--variant` is `uniform`, `bottleneck`, or `tight`):
 
 ```bash
 .venv/bin/python -m jobshop.demo --variant uniform --seed 0
 ```
 
-That prints the verifier score, 0 or 1, and writes `out/uniform-seed0.svg`. `--variant` is `uniform`, `bottleneck`, or `tight`.
+This prints the verifier score and writes `out/uniform-seed0.svg`.
 
-## The Hartwig week
+## Scenario: the Hartwig week
 
-Hartwig Zerspanung GmbH is invented. Machines: a 5-axis mill, a CNC lathe, and a deburr-and-inspection station. The clock counts working hours, one 8-hour shift a day from Monday 06:00. The truck leaves at hour 40, the end of Friday's shift, which is also the exact optimum.
+Hartwig Zerspanung GmbH is fictional. It has three machines: a 5-axis mill, a CNC lathe, and a deburr-and-inspection station. Time is in working hours: one 8-hour shift per day from Monday 06:00. The truck leaves at hour 40 (end of Friday's shift), which is also the optimal makespan.
 
-| order | customer | routing, hours |
+| Order | Customer | Routing (hours) |
 | --- | --- | --- |
-| pump flange | Rhein Hydraulik | lathe 8, mill 16, inspect 2 |
-| gearbox housing | Alb Getriebe | mill 12, lathe 4, inspect 2 |
-| sensor bracket | Neckar Sensorik | mill 10, lathe 6, inspect 2 |
+| Pump flange | Rhein Hydraulik | lathe 8 → mill 16 → inspect 2 |
+| Gearbox housing | Alb Getriebe | mill 12 → lathe 4 → inspect 2 |
+| Sensor bracket | Neckar Sensorik | mill 10 → lathe 6 → inspect 2 |
 
-Finish hours for flange, housing and bracket:
+Finish hour per order:
 
-| planner | flange | housing | bracket |
+| Planner | Flange | Housing | Bracket |
 | --- | --- | --- | --- |
-| greedy dispatch rule | 54 | 58 | 60 |
-| senior planner | 40 | 18 | 30 |
-| shortcut planner (mill double-booked) | 30 | 22 | 18 |
+| Greedy dispatch rule | 54 | 58 | 60 |
+| Senior planner | 40 | 18 | 30 |
+| Shortcut planner (mill double-booked) | 30 | 22 | 18 |
 
-`tests/test_scenario.py` pins these hours.
+These values are pinned by `tests/test_scenario.py`.
 
-Decisions, results, limits, and the next step are in `NOTE.md`.
+## Further reading
+
+Decisions, results, limits, and next steps: [`NOTE.md`](NOTE.md).
