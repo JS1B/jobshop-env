@@ -40,9 +40,11 @@ def test_bottleneck_scales_machine_zero() -> None:
     assert slow.target_makespan == optimal_makespan(slow)
 
 
-def test_tight_target_is_slack_times_the_bound() -> None:
-    instance = tight(seed=0)
-    assert instance.target_makespan == math.ceil(lower_bound(instance) * 1.05)
+def test_tight_target_is_slack_times_the_bound_but_reachable() -> None:
+    for seed in range(10):
+        instance = tight(seed=seed)
+        bound_target = math.ceil(lower_bound(instance) * 1.05)
+        assert instance.target_makespan == max(bound_target, optimal_makespan(instance))
 
 
 def test_lower_bound_and_optimum_on_the_fixture() -> None:
@@ -74,3 +76,7 @@ def test_success_table_covers_three_variants() -> None:
     for _name, successes, episodes in rows:
         assert episodes == 1
         assert 0 <= successes <= episodes
+
+
+def test_success_table_matches_the_note() -> None:
+    assert success_table() == [("uniform", 2, 10), ("bottleneck", 4, 10), ("tight", 3, 10)]

@@ -1,7 +1,17 @@
-.PHONY: test demo
+.PHONY: test demo scenario
 
-test:
-	python -m pytest
+PYTHON ?= python3
+VENV_PY := .venv/bin/python
 
-demo:
-	python -m jobshop.demo
+test: $(VENV_PY)
+	$(VENV_PY) -m pytest
+
+demo: $(VENV_PY)
+	$(VENV_PY) -m jobshop.demo
+
+scenario: $(VENV_PY)
+	$(VENV_PY) -m jobshop.scenario
+
+$(VENV_PY):
+	$(PYTHON) -m venv .venv
+	$(VENV_PY) -m pip install --quiet -e ".[dev]"

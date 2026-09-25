@@ -1,11 +1,13 @@
 """Job-shop environment.
 
-The agent acts with ``(job, start_time)`` and always schedules that job's
-next operation. The environment enforces precedence and rejects a start in
-the past. It does not enforce machine capacity: two operations may occupy
-the same machine at the same time. That gap is the reward exploit.
+The policy under test (a rule, a search, or a model) acts with
+``(job, start_time)`` and always schedules that job's next operation. The
+environment enforces precedence and rejects a start in the past. It does
+not enforce machine capacity: two operations may occupy the same machine at
+the same time. That gap is the reward exploit.
 """
 
+import copy
 from dataclasses import dataclass
 
 
@@ -53,7 +55,7 @@ class State:
 
 @dataclass(frozen=True)
 class Observation:
-    """Agent view. Same jobs as the instance, without the target makespan."""
+    """What the policy sees: a copy of the jobs, without the target makespan."""
 
     jobs: tuple[tuple[Operation, ...], ...]
     clock: int
@@ -86,35 +88,43 @@ def action_error(
 class JobShopEnv:
     """Episode over one instance.
 
-    The clock starts at 0 and becomes the latest accepted start time.
-    ``step`` raises ``ValueError`` without mutating state when the action
-    names an unknown job, would schedule anything other than that job's
-    next operation, or uses a ``start_time`` earlier than the clock.
+    The clock starts at 0 and becomes the latest accepted start time, so
+    actions arrive in start-time order. ``step`` raises ``ValueError``
+    without mutating state when the action names an unknown job, would
+    schedule anything other than that job's next operation, starts before
+    the clock, or starts before the job's previous operation ends.
     Overlapping machine intervals are accepted.
 
     Intermediate rewards are 0. When every operation has been scheduled,
-    the episode ends and the reward is ``verify(state)`` (0 or 1).
+    the episode ends and the reward is ``verify`` on the environment's own
+    copy of the instance (0 or 1). ``instance``, ``state`` and observations
+    hand out copies, so editing them cannot change what is scored.
     """
 
     def __init__(self, instance: Instance) -> None:
-        self.instance = instance
+        self._instance = copy.deepcopy(instance)
         self._clock = 0
         self._next = [0] * len(instance.jobs)
         self._ready = [0] * len(instance.jobs)
         self._log: list[Action] = []
 
+    @property
+    def instance(self) -> Instance:
+        """A copy of the instance this episode is scored against."""
+        return copy.deepcopy(self._instance)
+
     def reset(self) -> Observation:
         """Return the observation for an empty schedule at clock 0."""
         self._clock = 0
-        self._next = [0] * len(self.instance.jobs)
-        self._ready = [0] * len(self.instance.jobs)
+        self._next = [0] * len(self._instance.jobs)
+        self._ready = [0] * len(self._instance.jobs)
         self._log = []
         return self._observation()
 
     def step(self, action: Action) -> tuple[Observation, float, bool, dict[str, object]]:
         """Apply one action. Returns observation, reward, done, info."""
         error = action_error(
-            self.instance,
+            self._instance,
             self._clock,
             tuple(self._next),
             tuple(self._ready),
@@ -122,7 +132,7 @@ class JobShopEnv:
         )
         if error is not None:
             raise ValueError(error)
-        op = self.instance.jobs[action.job][self._next[action.job]]
+        op = self._instance.jobs[action.job][self._next[action.job]]
         self._next[action.job] += 1
         self._ready[action.job] = action.start_time + op.duration
         self._clock = max(self._clock, action.start_time)
@@ -132,12 +142,12 @@ class JobShopEnv:
         if done:
             from jobshop.verifier import verify
 
-            reward = float(verify(self.state))
+            reward = float(verify(State(self._instance, tuple(self._log))))
         return self._observation(), reward, done, {}
 
     @property
     def state(self) -> State:
-        """Current state, including cached ``done`` and ``makespan``."""
+        """A copy of the current state, including cached ``done`` and ``makespan``."""
         return State(
             self.instance,
             tuple(self._log),
@@ -146,21 +156,25 @@ class JobShopEnv:
         )
 
     def _observation(self) -> Observation:
-        return Observation(jobs=self.instance.jobs, clock=self._clock, log=tuple(self._log))
+        return Observation(
+            jobs=copy.deepcopy(self._instance.jobs),
+            clock=self._clock,
+            log=tuple(self._log),
+        )
 
     def _scheduled_all(self) -> bool:
         return all(
             self._next[job] == len(operations)
-            for job, operations in enumerate(self.instance.jobs)
+            for job, operations in enumerate(self._instance.jobs)
         )
 
     def _cached_makespan(self) -> int | None:
         if not self._log:
             return None
         finish = 0
-        next_op = [0] * len(self.instance.jobs)
+        next_op = [0] * len(self._instance.jobs)
         for action in self._log:
-            op = self.instance.jobs[action.job][next_op[action.job]]
+            op = self._instance.jobs[action.job][next_op[action.job]]
             next_op[action.job] += 1
             finish = max(finish, action.start_time + op.duration)
         return finish

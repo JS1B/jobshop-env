@@ -2,8 +2,9 @@
 
 ``uniform`` and ``bottleneck`` set ``target_makespan`` from an exact
 optimum on tiny instances, and from ``ceil(lower_bound * slack)``
-otherwise. The default slack is 1.5. ``tight`` always uses
-``ceil(lower_bound * 1.05)``.
+otherwise. The default slack is 1.5. ``tight`` uses
+``ceil(lower_bound * 1.05)``, raised to the exact optimum on tiny instances
+so that every tiny ``tight`` target is reachable.
 """
 
 import math
@@ -53,9 +54,16 @@ def tight(
     duration: tuple[int, int] = (1, 5),
     slack: float = 1.05,
 ) -> Instance:
-    """Like ``uniform``, with a target about 1.05 times the lower bound."""
+    """Like ``uniform``, with a target about 1.05 times the lower bound.
+
+    On tiny instances the target is never below the exact optimum.
+    """
     jobs = _jobs(random.Random(seed), n_jobs, n_machines, duration, factor=1)
-    return _with_target(jobs, slack, exact=False)
+    blank = Instance(jobs, target_makespan=0)
+    target = math.ceil(lower_bound(blank) * slack)
+    if sum(len(job) for job in jobs) <= _TINY_OPERATIONS:
+        target = max(target, optimal_makespan(blank))
+    return Instance(jobs, target_makespan=target)
 
 
 def _jobs(

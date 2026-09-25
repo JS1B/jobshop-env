@@ -44,6 +44,29 @@ def test_optimal_episode_reward_is_one() -> None:
     assert reward == 1.0
 
 
+def test_editing_handed_out_objects_does_not_change_the_score() -> None:
+    # Both first operations share machine 0, so this log double-books it.
+    instance = Instance(
+        jobs=(
+            (Operation(0, 3), Operation(1, 1)),
+            (Operation(0, 3), Operation(1, 1)),
+        ),
+        target_makespan=5,
+    )
+    env = JobShopEnv(instance)
+    obs = env.reset()
+    object.__setattr__(obs.jobs[1][0], "machine", 2)
+    object.__setattr__(env.instance, "target_makespan", 100)
+    object.__setattr__(env.state.instance.jobs[1][0], "machine", 2)
+    reward = 0.0
+    for action in (Action(0, 0), Action(1, 0), Action(0, 3), Action(1, 4)):
+        _obs, reward, _done, _info = env.step(action)
+    assert reward == 0.0
+
+    object.__setattr__(instance.jobs[1][0], "machine", 2)
+    assert env.instance.jobs[1][0].machine == 0
+
+
 def test_step_accepts_double_booking() -> None:
     instance = Instance(
         jobs=(
